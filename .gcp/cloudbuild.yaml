@@ -11,20 +11,16 @@ steps:
         $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME-17.0:latest
       - './17.0'
       - '-f'
-      - Dockerfile
+      - ./17.0/Dockerfile
     id: Build
   - name: gcr.io/cloud-builders/docker
     args:
       - push
       - >-
         $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME-17.0:$COMMIT_SHA
-    id: Push by commit
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - push
       - >-
         $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME-17.0:latest
-    id: Push by tag
+    id: Push image
 images:
   - >-
     $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
