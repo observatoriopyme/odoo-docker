@@ -1,0 +1,25 @@
+{
+  // Oculta todos los directorios excepto `mi_modulo_interes`
+  "files.exclude": {
+    "**/test": true,
+    "**/__pycache__": true,
+    "**/node_modules": true,
+    "**/.git": true,
+  },
+  "search.exclude": {
+    "**/test": true,
+    "**/__pycache__": true,
+    "**/node_modules": true,
+    "**/.git": true,
+  },
+
+  // Configura Python para buscar tests solo en un directorio específico
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "./mi_modulo_interes/test",   // <-- Solo este se considera
+    "-p",
+    "test_*.py"
+  ],
+  "python.testing.unittestEnabled": false
+}
