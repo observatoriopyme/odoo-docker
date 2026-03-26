@@ -2,7 +2,7 @@
 
 PROJECT_ID=fop-comunidad
 REGION=us-east4
-REPOSITORY=cloud-run-source-deploy
+REPOSITORY=deploy
 ODOO_VERSION=17.0
 
 DOCKER_IMAGE_BASE=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/fop-odoo/odoo-${ODOO_VERSION}
