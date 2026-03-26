@@ -5,7 +5,7 @@ REGION=us-east4
 REPOSITORY=cloud-run-source-deploy
 ODOO_VERSION=17.0
 
-DOCKER_IMAGE_BASE=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/odoo-docker/odoo-${ODOO_VERSION}
+DOCKER_IMAGE_BASE=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/fop-odoo/odoo-${ODOO_VERSION}
 IMAGE_VERSION=$(shell git rev-parse --short HEAD)
 DOCKER_IMAGE=${DOCKER_IMAGE_BASE}:${IMAGE_VERSION}
 DOCKER_IMAGE_LATEST=${DOCKER_IMAGE_BASE}:latest
