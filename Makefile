@@ -1,7 +1,7 @@
 .PHONY: build push check_vars
 
 PROJECT_ID=fop-comunidad
-REGION=us-east4
+REGION=us-central1
 REPOSITORY=fop
 ODOO_VERSION=17.0
 ASSET=odoo
