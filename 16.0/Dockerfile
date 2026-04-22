@@ -1,23 +1,26 @@
 FROM debian:bullseye-slim
-MAINTAINER Odoo S.A. <info@odoo.com>
 
 SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 
 # Generate locale C.UTF-8 for postgres and general locale data
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
 
 # Retrieve the target architecture to install the correct wkhtmltopdf package
 ARG TARGETARCH
 
-# Install some deps, lessc and less-plugin-clean-css, and wkhtmltopdf
+ENV ODOO_VERSION=16.0
+ARG ODOO_RELEASE=20250428
+ARG ODOO_SHA=e5d936d73b4c08ce62eedebf7aa6d626507cee8b
+
+# Install all deps in one layer so build-only tools can be purged without leaving traces
 RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         dirmngr \
-        fonts-noto-cjk \
         gnupg \
-        libssl-dev \
+        libssl1.1 \
         node-less \
         npm \
         python3-magic \
@@ -35,23 +38,21 @@ RUN apt-get update && \
         python3-watchdog \
         python3-xlrd \
         python3-xlwt \
-        xz-utils && \
-    if [ -z "${TARGETARCH}" ]; then \
-        TARGETARCH="$(dpkg --print-architecture)"; \
-    fi; \
-    WKHTMLTOPDF_ARCH=${TARGETARCH} && \
-    case ${TARGETARCH} in \
-    "amd64") WKHTMLTOPDF_ARCH=amd64 && WKHTMLTOPDF_SHA=9df8dd7b1e99782f1cfa19aca665969bbd9cc159  ;; \
-    "arm64")  WKHTMLTOPDF_SHA=58c84db46b11ba0e14abb77a32324b1c257f1f22  ;; \
-    "ppc64le" | "ppc64el") WKHTMLTOPDF_ARCH=ppc64el && WKHTMLTOPDF_SHA=7ed8f6dcedf5345a3dd4eeb58dc89704d862f9cd  ;; \
-    esac \
+        xz-utils \
+    # wkhtmltopdf
+    && if [ -z "${TARGETARCH}" ]; then TARGETARCH="$(dpkg --print-architecture)"; fi \
+    && WKHTMLTOPDF_ARCH=${TARGETARCH} \
+    && case ${TARGETARCH} in \
+        "amd64") WKHTMLTOPDF_ARCH=amd64 && WKHTMLTOPDF_SHA=9df8dd7b1e99782f1cfa19aca665969bbd9cc159 ;; \
+        "arm64") WKHTMLTOPDF_SHA=58c84db46b11ba0e14abb77a32324b1c257f1f22 ;; \
+        "ppc64le" | "ppc64el") WKHTMLTOPDF_ARCH=ppc64el && WKHTMLTOPDF_SHA=7ed8f6dcedf5345a3dd4eeb58dc89704d862f9cd ;; \
+       esac \
     && curl -o wkhtmltox.deb -sSL https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bullseye_${WKHTMLTOPDF_ARCH}.deb \
     && echo ${WKHTMLTOPDF_SHA} wkhtmltox.deb | sha1sum -c - \
     && apt-get install -y --no-install-recommends ./wkhtmltox.deb \
-    && rm -rf /var/lib/apt/lists/* wkhtmltox.deb
-
-# install latest postgresql-client
-RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main' > /etc/apt/sources.list.d/pgdg.list \
+    && rm -f wkhtmltox.deb \
+    # postgresql-client
+    && echo 'deb http://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main' > /etc/apt/sources.list.d/pgdg.list \
     && GNUPGHOME="$(mktemp -d)" \
     && export GNUPGHOME \
     && repokey='B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8' \
@@ -59,23 +60,26 @@ RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main' > /et
     && gpg --batch --armor --export "${repokey}" > /etc/apt/trusted.gpg.d/pgdg.gpg.asc \
     && gpgconf --kill all \
     && rm -rf "$GNUPGHOME" \
-    && apt-get update  \
+    && apt-get update \
     && apt-get install --no-install-recommends -y postgresql-client \
     && rm -f /etc/apt/sources.list.d/pgdg.list \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install rtlcss (on Debian buster)
-RUN npm install -g rtlcss
-
-# Install Odoo
-ENV ODOO_VERSION 16.0
-ARG ODOO_RELEASE=20250428
-ARG ODOO_SHA=e5d936d73b4c08ce62eedebf7aa6d626507cee8b
-RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/odoo_${ODOO_VERSION}.${ODOO_RELEASE}_all.deb \
+    # rtlcss
+    && npm install -g rtlcss \
+    && npm cache clean --force \
+    # Odoo
+    && curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/odoo_${ODOO_VERSION}.${ODOO_RELEASE}_all.deb \
     && echo "${ODOO_SHA} odoo.deb" | sha1sum -c - \
     && apt-get update \
     && apt-get -y install --no-install-recommends ./odoo.deb \
-    && rm -rf /var/lib/apt/lists/* odoo.deb
+    && rm -f odoo.deb \
+    # remove unused translations (keep es_AR, es/es_ES fallback, en)
+    && find /usr/lib/python3/dist-packages/odoo/addons -path "*/i18n/*.po" \
+        ! -name "es_AR.po" ! -name "es.po" ! -name "es_ES.po" \
+        ! -name "en.po" ! -name "en_US.po" \
+        -delete \
+    # purge build-only tools
+    && apt-get purge -y --auto-remove curl dirmngr gnupg xz-utils \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy entrypoint script and Odoo configuration file
 COPY ./entrypoint.sh /
@@ -91,7 +95,7 @@ VOLUME ["/var/lib/odoo", "/mnt/extra-addons"]
 EXPOSE 8069 8071 8072
 
 # Set the default config file
-ENV ODOO_RC /etc/odoo/odoo.conf
+ENV ODOO_RC=/etc/odoo/odoo.conf
 
 COPY wait-for-psql.py /usr/local/bin/wait-for-psql.py
 
