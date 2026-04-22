@@ -22,9 +22,11 @@ build: check_vars
 	docker build -f ${ODOO_VERSION}/Dockerfile ${ODOO_VERSION}/ \
 		-t ${DOCKER_IMAGE} \
 		-t ${DOCKER_IMAGE_LATEST}
+	@echo "${IMAGE_VERSION}" > .last-built-version
 
-push: build
-	docker push "${DOCKER_IMAGE}"
+push:
+	@VERSION=$$(cat .last-built-version) && \
+	docker push "${DOCKER_IMAGE_BASE}:$$VERSION" && \
 	docker push "${DOCKER_IMAGE_LATEST}"
 
 .DEFAULT_GOAL := check_vars
