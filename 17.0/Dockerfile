@@ -12,6 +12,9 @@ ENV ODOO_VERSION=17.0
 ARG ODOO_RELEASE=20260327
 ARG ODOO_SHA=854ae06dc3ff4da35cfac101fcc632fa4b2e4ff7
 
+ARG MAXMIND_ACCOUNT_ID
+ARG MAXMIND_LICENSE_KEY
+
 # Install all deps in one layer so build-only tools can be purged without leaving traces
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \
@@ -77,6 +80,20 @@ RUN apt-get update && \
         ! -name "es_AR.po" ! -name "es.po" ! -name "es_ES.po" \
         ! -name "en.po" ! -name "en_US.po" \
         -delete \
+    # GeoLite2 databases (optional: requires MAXMIND_ACCOUNT_ID + MAXMIND_LICENSE_KEY build args)
+    && if [ -n "${MAXMIND_LICENSE_KEY}" ] && [ -n "${MAXMIND_ACCOUNT_ID}" ]; then \
+        mkdir -p /usr/share/GeoIP \
+        && GEOIP_TMP=$(mktemp -d) \
+        && curl -sSL --user "${MAXMIND_ACCOUNT_ID}:${MAXMIND_LICENSE_KEY}" \
+            "https://download.maxmind.com/geoip/databases/GeoLite2-Country/download?suffix=tar.gz" \
+            | tar -xz -C "$GEOIP_TMP" \
+        && find "$GEOIP_TMP" -name 'GeoLite2-Country.mmdb' -exec mv {} /usr/share/GeoIP/ \; \
+        && curl -sSL --user "${MAXMIND_ACCOUNT_ID}:${MAXMIND_LICENSE_KEY}" \
+            "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz" \
+            | tar -xz -C "$GEOIP_TMP" \
+        && find "$GEOIP_TMP" -name 'GeoLite2-City.mmdb' -exec mv {} /usr/share/GeoIP/ \; \
+        && rm -rf "$GEOIP_TMP"; \
+    fi \
     # purge build-only tools
     && apt-get purge -y --auto-remove curl dirmngr gnupg xz-utils \
     && rm -rf /var/lib/apt/lists/*
