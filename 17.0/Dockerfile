@@ -51,6 +51,7 @@ RUN apt-get update && \
         python3-watchdog \
         python3-xlrd \
         python3-xlwt \
+        tzdata-legacy \
         xz-utils \
     # wkhtmltopdf
     && if [ -z "${TARGETARCH}" ]; then TARGETARCH="$(dpkg --print-architecture)"; fi \
