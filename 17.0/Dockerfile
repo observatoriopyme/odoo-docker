@@ -85,6 +85,9 @@ RUN apt-get update && \
     && apt-get update \
     && apt-get -y install --no-install-recommends ./odoo.deb \
     && rm -f odoo.deb \
+    # el postinst del .deb solo hace este chown si el crea el usuario el
+    # mismo; como lo pre-creamos nosotros (uid pineado), lo repetimos aca
+    && chown odoo:odoo /var/lib/odoo \
     # remove unused translations (keep es_AR, es/es_ES fallback, en)
     && find /usr/lib/python3/dist-packages/odoo/addons -path "*/i18n/*.po" \
         ! -name "es_AR.po" ! -name "es.po" ! -name "es_ES.po" \
