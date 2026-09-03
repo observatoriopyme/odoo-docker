@@ -5,6 +5,16 @@ SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 # Generate locale C.UTF-8 for postgres and general locale data
 ENV LANG=en_US.UTF-8
 
+# Pin uid/gid de odoo a 101:101 (heredado de la imagen jammy anterior),
+# antes de instalar cualquier otro paquete que pueda reclamar ese uid via
+# su propio adduser/useradd. El postinst del .deb de odoo es idempotente:
+# si el usuario "odoo" ya existe no lo vuelve a crear (solo hace chown),
+# asi que este pin evita que quede con un uid distinto por diferencias en
+# los uids de sistema ya reservados entre jammy y noble -- lo cual rompe
+# el acceso a volumenes/buckets existentes (sessions, filestore) que ya
+# tienen datos escritos por el uid 101.
+RUN groupadd -g 101 odoo && useradd -u 101 -g odoo -d /var/lib/odoo --system --no-create-home odoo
+
 # Retrieve the target architecture to install the correct wkhtmltopdf package
 ARG TARGETARCH
 
