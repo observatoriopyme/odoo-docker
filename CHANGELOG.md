@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026-09-03]
+
+### Changed
+- **Build movido a GitHub Actions**: se elimina el trigger de Cloud Build `odoo-activator` y `.gcp/cloudbuild.yaml`. Ese trigger pusheaba a `us-east4-docker.pkg.dev/.../cloud-run-source-deploy/odoo-docker/odoo-17.0`, un path que ningún Dockerfile consumía realmente (fallaba además por falta de permiso `secretmanager.versions.access`). El nuevo workflow `.github/workflows/build_push.yml` construye y pushea `17.0/Dockerfile` a `us-central1-docker.pkg.dev/fop-comunidad/fop/odoo/odoo-17.0` (el path real que consume `fop-odoo-enterprise/Dockerfile`) en cada push a `master` que toque `17.0/**`, autenticando con el mismo secret `GCP_SA_KEY` que ya usa `fop-odoo`. `MAXMIND_ACCOUNT_ID`/`MAXMIND_LICENSE_KEY` pasan a ser secrets de GitHub Actions en este repo en vez de Secret Manager de GCP.
+
 ## [2026-06-08]
 
 ### Added

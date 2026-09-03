@@ -1,0 +1,58 @@
+name: Build and Push Odoo Image
+
+# Reemplaza al trigger de Cloud Build "odoo-activator": ese pusheaba a
+# us-east4-docker.pkg.dev/.../cloud-run-source-deploy/odoo-docker/odoo-17.0,
+# un path que ningun Dockerfile consume. La imagen real la consume
+# fop-odoo-enterprise/Dockerfile via FROM en el path de abajo (el mismo
+# que produce `make push` del Makefile de este repo).
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '17.0/**'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: fop-comunidad
+  REGION: us-central1
+  REPOSITORY: fop
+  ASSET: odoo
+  ODOO_VERSION: '17.0'
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker auth for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Resolve image tag
+        id: vars
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.ODOO_VERSION }}
+          file: ${{ env.ODOO_VERSION }}/Dockerfile
+          push: true
+          build-args: |
+            MAXMIND_ACCOUNT_ID=${{ secrets.MAXMIND_ACCOUNT_ID }}
+            MAXMIND_LICENSE_KEY=${{ secrets.MAXMIND_LICENSE_KEY }}
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.ASSET }}/odoo-${{ env.ODOO_VERSION }}:${{ steps.vars.outputs.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.ASSET }}/odoo-${{ env.ODOO_VERSION }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
